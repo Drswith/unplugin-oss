@@ -158,7 +158,7 @@ describe("uploader", () => {
     expect(output).toContain("oss: /cdn/assets/app.js");
     expect(output).toContain("status: missing will create");
     expect(output).toContain("action: uploading...");
-    expect(output).toContain("result: uploaded url: https://example.com/cdn/assets/app.js");
+    expect(output).toContain("result: uploaded\n  url: https://example.com/cdn/assets/app.js");
   });
 
   it("prints overwrite intent when an existing object will be replaced", async () => {
@@ -198,7 +198,7 @@ describe("uploader", () => {
     expect(output).toContain("status: exists overwrite enabled");
     expect(output).toContain("1/1");
     expect(output).toContain("action: uploading...");
-    expect(output).toContain("result: uploaded url: https://example.com/cdn/assets/app.js");
+    expect(output).toContain("result: uploaded\n  url: https://example.com/cdn/assets/app.js");
   });
 
   it("prints existing object logs and skips uploads when overwrite is disabled", async () => {

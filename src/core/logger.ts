@@ -51,8 +51,11 @@ export function logUploadProgress(logger: Logger): void {
 }
 
 export function logUploadSuccess(logger: Logger, url?: string): void {
-  const suffix = url ? ` ${pc.dim("url:")} ${pc.green(pc.underline(url))}` : "";
-  logger.log(`  ${pc.dim("result:")} ${pc.green("uploaded")}${suffix}`);
+  logger.log(`  ${pc.dim("result:")} ${pc.green("uploaded")}`);
+
+  if (url) {
+    logger.log(`  ${pc.dim("url:")} ${pc.green(pc.underline(url))}`);
+  }
 }
 
 export function logUploadFailure(logger: Logger, error: string): void {
