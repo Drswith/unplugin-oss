@@ -459,6 +459,61 @@ pnpm run test -- tests/uploader.test.ts
 pnpm run test -- tests/builders.test.ts
 ```
 
+## Agent Usage
+
+Copy this prompt into your coding agent when you want it to add Aliyun OSS
+uploads to an existing project:
+
+```md
+Add `unplugin-aliyun-oss` to this project and wire it into the current bundler.
+
+Requirements:
+
+1. Detect the package manager and install `unplugin-aliyun-oss` as a dev
+   dependency.
+2. Detect the active bundler and import the matching adapter:
+   - Vite: `unplugin-aliyun-oss/vite`
+   - Webpack: `unplugin-aliyun-oss/webpack`
+   - Rollup: `unplugin-aliyun-oss/rollup`
+   - Rolldown: `unplugin-aliyun-oss/rolldown`
+   - esbuild: `unplugin-aliyun-oss/esbuild`
+   - Rspack: `unplugin-aliyun-oss/rspack`
+   - Farm: `unplugin-aliyun-oss/farm`
+3. Read OSS settings from environment variables. Do not hard-code secrets:
+   - `OSS_REGION`
+   - `OSS_BUCKET`
+   - `OSS_ACCESS_KEY_ID`
+   - `OSS_ACCESS_KEY_SECRET`
+4. Configure the plugin to upload the production build output. Use the actual
+   output directory from the bundler config, usually `dist/**/*`.
+5. Set `dist` to the OSS object prefix I want assets published under. If I have
+   not specified one, ask before choosing it.
+6. For Farm, or whenever the output root cannot be inferred safely, set
+   `buildRoot` explicitly to the build output directory.
+7. Keep local validation non-destructive. Use `test: true` first unless I
+   explicitly provide a real OSS test bucket and ask for live upload
+   verification.
+8. After editing config, run the project typecheck/build command that already
+   exists in `package.json`. Do not invent unrelated tooling.
+9. Report the changed files, the selected adapter, the final OSS key mapping for
+   one example file, and the verification command output.
+```
+
+Example target config the agent can adapt:
+
+```ts
+import Oss from "unplugin-aliyun-oss/vite";
+
+Oss({
+  from: "dist/**/*",
+  dist: "/static",
+  region: process.env.OSS_REGION!,
+  bucket: process.env.OSS_BUCKET!,
+  accessKeyId: process.env.OSS_ACCESS_KEY_ID!,
+  accessKeySecret: process.env.OSS_ACCESS_KEY_SECRET!,
+});
+```
+
 ## License
 
 [MIT](./LICENSE) License © 2025-PRESENT [Drswith](https://github.com/Drswith)
