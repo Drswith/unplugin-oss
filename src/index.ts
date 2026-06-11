@@ -1,6 +1,6 @@
 import path from "node:path";
 import { createUnplugin, type UnpluginInstance, type UnpluginOptions } from "unplugin";
-import { resolveOptions, type Options } from "./core/options";
+import { resolveOptions, type Options, type SupportedFramework } from "./core/options";
 import { uploadMatchedFiles } from "./core/uploader";
 
 export const Oss: UnpluginInstance<Options, false> = createUnplugin((rawOptions, meta) => {
@@ -12,10 +12,35 @@ export const Oss: UnpluginInstance<Options, false> = createUnplugin((rawOptions,
         name,
         ...createViteHooks(rawOptions),
       };
+    case "rollup":
+      return {
+        name,
+        ...createRollupHooks(rawOptions),
+      };
+    case "rolldown":
+      return {
+        name,
+        ...createRolldownHooks(rawOptions),
+      };
+    case "esbuild":
+      return {
+        name,
+        ...createEsbuildHooks(rawOptions),
+      };
     case "webpack":
       return {
         name,
-        ...createWebpackHooks(rawOptions, meta.webpack.compiler.options.output.path),
+        ...createOutputPathHooks(rawOptions, "webpack", meta.webpack.compiler.options.output.path),
+      };
+    case "rspack":
+      return {
+        name,
+        ...createOutputPathHooks(rawOptions, "rspack", meta.rspack.compiler.options.output.path),
+      };
+    case "farm":
+      return {
+        name,
+        ...createOutputPathHooks(rawOptions, "farm"),
       };
     default:
       return {
@@ -27,7 +52,21 @@ export const Oss: UnpluginInstance<Options, false> = createUnplugin((rawOptions,
 export type { Options, OssOptions, OptionalOptions, VersionPayload } from "./core/options";
 
 type ViteHooks = Pick<UnpluginOptions, "vite" | "writeBundle">;
-type WebpackHooks = Pick<UnpluginOptions, "writeBundle">;
+type RollupHooks = Pick<UnpluginOptions, "rollup" | "writeBundle">;
+type RolldownHooks = Pick<UnpluginOptions, "rolldown" | "writeBundle">;
+type EsbuildHooks = Pick<UnpluginOptions, "esbuild" | "writeBundle">;
+type UploadHooks = Pick<UnpluginOptions, "writeBundle">;
+
+interface RollupOutputOptions {
+  dir?: string;
+  file?: string;
+}
+
+interface EsbuildBuildOptions {
+  absWorkingDir?: string;
+  outdir?: string;
+  outfile?: string;
+}
 
 function createViteHooks(rawOptions: Options): ViteHooks {
   let outputPath: string | undefined;
@@ -40,24 +79,89 @@ function createViteHooks(rawOptions: Options): ViteHooks {
           : path.resolve(config.root, config.build.outDir);
       },
     },
+    ...createOutputPathHooks(rawOptions, "vite", () => outputPath),
+  };
+}
+
+function createRollupHooks(rawOptions: Options): RollupHooks {
+  let outputPath: string | undefined;
+
+  return {
+    rollup: {
+      outputOptions(options) {
+        outputPath = resolveRollupOutputPath(options);
+        return null;
+      },
+    },
+    ...createOutputPathHooks(rawOptions, "rollup", () => outputPath),
+  };
+}
+
+function createRolldownHooks(rawOptions: Options): RolldownHooks {
+  let outputPath: string | undefined;
+
+  return {
+    rolldown: {
+      outputOptions(options) {
+        outputPath = resolveRollupOutputPath(options);
+        return null;
+      },
+    },
+    ...createOutputPathHooks(rawOptions, "rolldown", () => outputPath),
+  };
+}
+
+function createEsbuildHooks(rawOptions: Options): EsbuildHooks {
+  let outputPath: string | undefined;
+
+  return {
+    esbuild: {
+      config(options) {
+        outputPath = resolveEsbuildOutputPath(options);
+      },
+    },
+    ...createOutputPathHooks(rawOptions, "esbuild", () => outputPath),
+  };
+}
+
+function createOutputPathHooks(
+  rawOptions: Options,
+  framework: SupportedFramework,
+  outputPath?: string | (() => string | undefined),
+): UploadHooks {
+  return {
     async writeBundle() {
       const options = resolveOptions(rawOptions);
       await uploadMatchedFiles(options, {
-        framework: "vite",
-        outputPath,
+        framework,
+        outputPath: typeof outputPath === "function" ? outputPath() : outputPath,
       });
     },
   };
 }
 
-function createWebpackHooks(rawOptions: Options, outputPath: string | undefined): WebpackHooks {
-  return {
-    async writeBundle() {
-      const options = resolveOptions(rawOptions);
-      await uploadMatchedFiles(options, {
-        framework: "webpack",
-        outputPath,
-      });
-    },
-  };
+function resolveRollupOutputPath(options: RollupOutputOptions): string | undefined {
+  if (options.dir) {
+    return path.resolve(options.dir);
+  }
+
+  if (options.file) {
+    return path.dirname(path.resolve(options.file));
+  }
+}
+
+function resolveEsbuildOutputPath(options: EsbuildBuildOptions): string | undefined {
+  const root = options.absWorkingDir ?? process.cwd();
+
+  if (options.outdir) {
+    return path.isAbsolute(options.outdir) ? options.outdir : path.resolve(root, options.outdir);
+  }
+
+  if (options.outfile) {
+    const outfile = path.isAbsolute(options.outfile)
+      ? options.outfile
+      : path.resolve(root, options.outfile);
+
+    return path.dirname(outfile);
+  }
 }

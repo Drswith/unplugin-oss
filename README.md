@@ -10,7 +10,8 @@ Upload build assets to Aliyun OSS after bundling. Powered by [unplugin](https://
 
 - Vite 4+ is implemented and tested with Vite 4.5.
 - Webpack 4+ is implemented and tested with Webpack 4.47 and Webpack 5.
-- Rollup, Rolldown, esbuild, Rspack, and Farm entries are exported for future support, but are currently TODO.
+- Rollup, Rolldown, esbuild, and Rspack are implemented and covered by builder tests.
+- Farm is implemented through the unplugin Farm adapter. Set `buildRoot` to control object keys relative to Farm's output root.
 
 ## Installation
 
@@ -94,33 +95,25 @@ interface Options {
 }
 ```
 
-| Option | Required | Default | Description |
-| --- | --- | --- | --- |
-| `from` | Yes | - | Files to upload. Supports glob patterns such as `dist/**` and `dist/**/*`. Directories matched by the glob are ignored before uploading, so only files are sent to OSS. |
-| `region` | Yes, unless `test: true` | - | Aliyun OSS region, for example `oss-cn-hangzhou`. |
-| `accessKeyId` | Yes, unless `test: true` | - | Aliyun access key id. |
-| `accessKeySecret` | Yes, unless `test: true` | - | Aliyun access key secret. |
-| `bucket` | Yes, unless `test: true` | - | Aliyun OSS bucket name. |
-| `test` | No | `false` | Dry run mode. Files are discovered and target paths are printed without creating an OSS client. |
-| `verbose` | No | `true` | Prints colored grouped logs with source file, OSS key, object status, action, result URL, and failures. Existing objects are logged as `skipped` when `overwrite: false`, so skipped files are not reported as `uploading`. |
-| `dist` | No | `""` | OSS object key prefix. |
-| `buildRoot` | No | `"."` | Controls how local paths are converted to OSS object keys. Vite uses `build.outDir`; Webpack uses `output.path` when `buildRoot` is not provided. |
-| `deleteOrigin` | No | `false` | Deletes local files after successful upload. |
-| `deleteEmptyDir` | No | `false` | Removes empty parent directories after deleting uploaded files. |
-| `timeout` | No | `60000` | OSS request timeout in milliseconds. |
-| `setOssPath` | No | - | Overrides the generated OSS object key for each file. Return `false`, `null`, or `undefined` to skip that file. |
-| `overwrite` | No | `true` | Overwrites existing OSS objects by default. Set `overwrite: false` to skip existing objects and send `x-oss-forbid-overwrite`. |
-| `quitWpOnError` | No | `false` | Makes Webpack builds fail when an upload fails. |
-| `version` | No | `""` | Version value passed to `setVersion` after successful uploads. |
-| `setVersion` | No | - | Callback used to publish version metadata after successful uploads. |
-
-## TODO
-
-- Rollup
-- Rolldown / tsdown
-- esbuild
-- Rspack
-- Farm
+| Option            | Required                 | Default | Description                                                                                                                                                                                                                 |
+| ----------------- | ------------------------ | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `from`            | Yes                      | -       | Files to upload. Supports glob patterns such as `dist/**` and `dist/**/*`. Directories matched by the glob are ignored before uploading, so only files are sent to OSS.                                                     |
+| `region`          | Yes, unless `test: true` | -       | Aliyun OSS region, for example `oss-cn-hangzhou`.                                                                                                                                                                           |
+| `accessKeyId`     | Yes, unless `test: true` | -       | Aliyun access key id.                                                                                                                                                                                                       |
+| `accessKeySecret` | Yes, unless `test: true` | -       | Aliyun access key secret.                                                                                                                                                                                                   |
+| `bucket`          | Yes, unless `test: true` | -       | Aliyun OSS bucket name.                                                                                                                                                                                                     |
+| `test`            | No                       | `false` | Dry run mode. Files are discovered and target paths are printed without creating an OSS client.                                                                                                                             |
+| `verbose`         | No                       | `true`  | Prints colored grouped logs with source file, OSS key, object status, action, result URL, and failures. Existing objects are logged as `skipped` when `overwrite: false`, so skipped files are not reported as `uploading`. |
+| `dist`            | No                       | `""`    | OSS object key prefix.                                                                                                                                                                                                      |
+| `buildRoot`       | No                       | `"."`   | Controls how local paths are converted to OSS object keys. Most adapters infer this from their output config when `buildRoot` is not provided.                                                                              |
+| `deleteOrigin`    | No                       | `false` | Deletes local files after successful upload.                                                                                                                                                                                |
+| `deleteEmptyDir`  | No                       | `false` | Removes empty parent directories after deleting uploaded files.                                                                                                                                                             |
+| `timeout`         | No                       | `60000` | OSS request timeout in milliseconds.                                                                                                                                                                                        |
+| `setOssPath`      | No                       | -       | Overrides the generated OSS object key for each file. Return `false`, `null`, or `undefined` to skip that file.                                                                                                             |
+| `overwrite`       | No                       | `true`  | Overwrites existing OSS objects by default. Set `overwrite: false` to skip existing objects and send `x-oss-forbid-overwrite`.                                                                                              |
+| `quitWpOnError`   | No                       | `false` | Makes Webpack and Rspack builds fail when an upload fails.                                                                                                                                                                  |
+| `version`         | No                       | `""`    | Version value passed to `setVersion` after successful uploads.                                                                                                                                                              |
+| `setVersion`      | No                       | -       | Callback used to publish version metadata after successful uploads.                                                                                                                                                         |
 
 ## License
 

@@ -1,9 +1,20 @@
 import fs from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
+import rspack, {
+  type Configuration as RspackConfiguration,
+  type Stats as RspackStats,
+} from "@rspack/core";
+import { build as esbuildBuild } from "esbuild";
+import { rolldown } from "rolldown";
+import { rollup } from "rollup";
 import { build as viteBuild } from "vite";
 import { afterEach, describe, expect, it } from "vitest";
 import webpack, { type Configuration, type Stats } from "webpack";
+import EsbuildOss from "../src/esbuild";
+import RolldownOss from "../src/rolldown";
+import RollupOss from "../src/rollup";
+import RspackOss from "../src/rspack";
 import Oss from "../src/vite";
 import WebpackOss from "../src/webpack";
 
@@ -19,6 +30,7 @@ describe("builder adapters", () => {
   it("runs after a Vite 4 build", async () => {
     const root = await createTmpDir();
     const outDir = path.join(root, "dist");
+    const uploadedFiles: string[] = [];
     await fs.mkdir(path.join(root, "src"), { recursive: true });
     await fs.writeFile(
       path.join(root, "index.html"),
@@ -31,9 +43,7 @@ describe("builder adapters", () => {
       logLevel: "silent",
       plugins: [
         Oss({
-          from: `${outDir}/**/*`,
-          test: true,
-          verbose: false,
+          ...createDryRunOptions(outDir, uploadedFiles),
         }),
       ],
       root,
@@ -44,11 +54,85 @@ describe("builder adapters", () => {
     });
 
     await expect(fs.stat(path.join(outDir, "index.html"))).resolves.toBeTruthy();
+    expect(uploadedFiles).toContain("index.html");
+  });
+
+  it("runs after a Rollup build", async () => {
+    const root = await createTmpDir();
+    const outDir = path.join(root, "dist");
+    const uploadedFiles: string[] = [];
+    const entry = path.join(root, "src", "index.js");
+    await fs.mkdir(path.dirname(entry), { recursive: true });
+    await fs.writeFile(entry, "export const value = 'rollup';");
+
+    const bundle = await rollup({
+      input: entry,
+      plugins: [RollupOss(createDryRunOptions(outDir, uploadedFiles)) as never],
+    });
+
+    try {
+      await bundle.write({
+        file: path.join(outDir, "bundle.js"),
+        format: "esm",
+      });
+    } finally {
+      await bundle.close();
+    }
+
+    await expect(fs.stat(path.join(outDir, "bundle.js"))).resolves.toBeTruthy();
+    expect(uploadedFiles).toContain("bundle.js");
+  });
+
+  it("runs after a Rolldown build", async () => {
+    const root = await createTmpDir();
+    const outDir = path.join(root, "dist");
+    const uploadedFiles: string[] = [];
+    const entry = path.join(root, "src", "index.js");
+    await fs.mkdir(path.dirname(entry), { recursive: true });
+    await fs.writeFile(entry, "export const value = 'rolldown';");
+
+    const bundle = await rolldown({
+      input: entry,
+      plugins: [RolldownOss(createDryRunOptions(outDir, uploadedFiles))],
+    });
+
+    try {
+      await bundle.write({
+        file: path.join(outDir, "bundle.js"),
+        format: "esm",
+      });
+    } finally {
+      await bundle.close();
+    }
+
+    await expect(fs.stat(path.join(outDir, "bundle.js"))).resolves.toBeTruthy();
+    expect(uploadedFiles).toContain("bundle.js");
+  });
+
+  it("runs after an esbuild build", async () => {
+    const root = await createTmpDir();
+    const outDir = path.join(root, "dist");
+    const uploadedFiles: string[] = [];
+    const entry = path.join(root, "src", "index.js");
+    await fs.mkdir(path.dirname(entry), { recursive: true });
+    await fs.writeFile(entry, "export const value = 'esbuild';");
+
+    await esbuildBuild({
+      bundle: true,
+      entryPoints: [entry],
+      logLevel: "silent",
+      outfile: path.join(outDir, "bundle.js"),
+      plugins: [EsbuildOss(createDryRunOptions(outDir, uploadedFiles)) as never],
+    });
+
+    await expect(fs.stat(path.join(outDir, "bundle.js"))).resolves.toBeTruthy();
+    expect(uploadedFiles).toContain("bundle.js");
   });
 
   it("runs after a webpack 5 build", async () => {
     const root = await createTmpDir();
     const outDir = path.join(root, "dist");
+    const uploadedFiles: string[] = [];
     await fs.mkdir(path.join(root, "src"), { recursive: true });
     await fs.writeFile(path.join(root, "src", "index.js"), "module.exports = 'webpack';");
 
@@ -62,19 +146,19 @@ describe("builder adapters", () => {
       },
       plugins: [
         WebpackOss({
-          from: `${outDir}/**/*`,
-          test: true,
-          verbose: false,
+          ...createDryRunOptions(outDir, uploadedFiles),
         }),
       ],
     });
 
     await expect(fs.stat(path.join(outDir, "bundle.js"))).resolves.toBeTruthy();
+    expect(uploadedFiles).toContain("bundle.js");
   });
 
   it("runs after a webpack 4 build", async () => {
     const root = await createTmpDir();
     const outDir = path.join(root, "dist");
+    const uploadedFiles: string[] = [];
     await fs.mkdir(path.join(root, "src"), { recursive: true });
     await fs.writeFile(path.join(root, "src", "index.js"), "module.exports = 'webpack4';");
 
@@ -94,9 +178,7 @@ describe("builder adapters", () => {
         },
         plugins: [
           WebpackOss({
-            from: `${outDir}/**/*`,
-            test: true,
-            verbose: false,
+            ...createDryRunOptions(outDir, uploadedFiles),
           }),
         ],
       },
@@ -104,8 +186,43 @@ describe("builder adapters", () => {
     );
 
     await expect(fs.stat(path.join(outDir, "bundle.js"))).resolves.toBeTruthy();
+    expect(uploadedFiles).toContain("bundle.js");
+  });
+
+  it("runs after a Rspack build", async () => {
+    const root = await createTmpDir();
+    const outDir = path.join(root, "dist");
+    const uploadedFiles: string[] = [];
+    await fs.mkdir(path.join(root, "src"), { recursive: true });
+    await fs.writeFile(path.join(root, "src", "index.js"), "module.exports = 'rspack';");
+
+    await runRspack({
+      context: root,
+      entry: "./src/index.js",
+      mode: "production",
+      output: {
+        filename: "bundle.js",
+        path: outDir,
+      },
+      plugins: [RspackOss(createDryRunOptions(outDir, uploadedFiles))],
+    });
+
+    await expect(fs.stat(path.join(outDir, "bundle.js"))).resolves.toBeTruthy();
+    expect(uploadedFiles).toContain("bundle.js");
   });
 });
+
+function createDryRunOptions(outDir: string, uploadedFiles: string[]) {
+  return {
+    from: `${outDir}/**/*`,
+    test: true,
+    verbose: false,
+    setOssPath(filePath: string) {
+      uploadedFiles.push(path.basename(filePath));
+      return `/assets/${path.basename(filePath)}`;
+    },
+  };
+}
 
 async function createTmpDir(): Promise<string> {
   const baseDir = path.join(process.cwd(), "node_modules", ".tmp");
@@ -113,6 +230,35 @@ async function createTmpDir(): Promise<string> {
   const dir = await fs.mkdtemp(path.join(baseDir, "unplugin-aliyun-oss-builder-"));
   tmpDirs.push(dir);
   return dir;
+}
+
+async function runRspack(config: RspackConfiguration): Promise<RspackStats> {
+  const compiler = rspack(config);
+
+  return new Promise<RspackStats>((resolve, reject) => {
+    compiler.run((error, stats) => {
+      closeCompiler(compiler, (closeError) => {
+        const finalError = error ?? closeError;
+
+        if (finalError) {
+          reject(finalError);
+          return;
+        }
+
+        if (!stats) {
+          reject(new Error("rspack did not return stats."));
+          return;
+        }
+
+        if (stats.hasErrors()) {
+          reject(new Error(stats.toString("errors-only")));
+          return;
+        }
+
+        resolve(stats);
+      });
+    });
+  });
 }
 
 async function runWebpack(config: Configuration, webpackFactory = webpack): Promise<Stats> {

@@ -4,6 +4,20 @@ allowBuilds:
   esbuild: false
   fsevents: false
 
+minimumReleaseAgeExclude:
+  - "@rspack/binding-darwin-arm64@2.0.8"
+  - "@rspack/binding-darwin-x64@2.0.8"
+  - "@rspack/binding-linux-arm64-gnu@2.0.8"
+  - "@rspack/binding-linux-arm64-musl@2.0.8"
+  - "@rspack/binding-linux-x64-gnu@2.0.8"
+  - "@rspack/binding-linux-x64-musl@2.0.8"
+  - "@rspack/binding-wasm32-wasi@2.0.8"
+  - "@rspack/binding-win32-arm64-msvc@2.0.8"
+  - "@rspack/binding-win32-ia32-msvc@2.0.8"
+  - "@rspack/binding-win32-x64-msvc@2.0.8"
+  - "@rspack/binding@2.0.8"
+  - "@rspack/core@2.0.8"
+
 peerDependencyRules:
   allowedVersions:
     terser-webpack-plugin>webpack: ^5.0.0

@@ -22,7 +22,7 @@ export interface OptionalOptions {
   verbose?: boolean;
   /** OSS object key prefix. */
   dist?: string;
-  /** Build output root. Webpack can usually infer this from `output.path`. */
+  /** Build output root. Most adapters can infer this from their output config. */
   buildRoot?: string;
   /** Delete local files after successful upload. */
   deleteOrigin?: boolean;
@@ -34,7 +34,7 @@ export interface OptionalOptions {
   setOssPath?: (filePath: string) => string | false | null | undefined;
   /** Overwrite existing OSS objects. */
   overwrite?: boolean;
-  /** Make webpack builds fail on upload errors. */
+  /** Make webpack-like builds fail on upload errors. */
   quitWpOnError?: boolean;
   /** Version value passed to `setVersion` after successful uploads. */
   version?: string;
@@ -44,7 +44,14 @@ export interface OptionalOptions {
 
 export type Options = Partial<OssOptions> & OptionalOptions;
 
-export type SupportedFramework = "vite" | "webpack";
+export type SupportedFramework =
+  | "vite"
+  | "rollup"
+  | "rolldown"
+  | "esbuild"
+  | "webpack"
+  | "rspack"
+  | "farm";
 
 export interface OptionsResolved extends OssOptions {
   from: string | string[];

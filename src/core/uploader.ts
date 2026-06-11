@@ -278,7 +278,9 @@ function getRelativeObjectPath(filePath: string, basePath: string): string {
 }
 
 function shouldAbortOnUploadError(options: OptionsResolved, runtime: UploadRuntime): boolean {
-  return runtime.framework === "webpack" && options.quitWpOnError;
+  return (
+    (runtime.framework === "webpack" || runtime.framework === "rspack") && options.quitWpOnError
+  );
 }
 
 function toFailedFile(file: string, ossPath: string, error: unknown): FailedFile {
