@@ -154,7 +154,7 @@ describe("uploader", () => {
     const output = stripAnsi(logger.logs.join("\n"));
     expect(output).toContain("[unplugin-aliyun-oss] Uploading to Aliyun OSS (1 file)");
     expect(output).toContain("[1/1]");
-    expect(output).toContain(file);
+    expect(output).toContain(file.replace(/\\/g, "/"));
     expect(output).toContain("oss: /cdn/assets/app.js");
     expect(output).toContain("status: missing will create");
     expect(output).toContain("action: uploading...");
